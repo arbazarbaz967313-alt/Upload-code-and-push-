@@ -1,0 +1,806 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GitHub Multi-Repo Pusher</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: #24292e;
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 24px;
+        }
+
+        .header p {
+            opacity: 0.8;
+            margin-top: 5px;
+        }
+
+        .content {
+            padding: 30px;
+        }
+
+        .section {
+            margin-bottom: 25px;
+        }
+
+        .section label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 8px;
+            color: #333;
+        }
+
+        .section input, .section textarea, .section select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e1e4e8;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border 0.3s;
+        }
+
+        .section input:focus, .section textarea:focus, .section select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .section small {
+            display: block;
+            color: #666;
+            margin-top: 5px;
+            font-size: 12px;
+        }
+
+        .section a {
+            color: #667eea;
+            text-decoration: none;
+        }
+
+        /* Plus Icon File Upload */
+        .file-area {
+            border: 2px dashed #e1e4e8;
+            border-radius: 12px;
+            padding: 30px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: #fafbfc;
+        }
+
+        .file-area:hover {
+            border-color: #667eea;
+            background: #f5f3ff;
+        }
+
+        .plus-icon {
+            font-size: 48px;
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+
+        .file-area p {
+            color: #666;
+        }
+
+        /* File List */
+        .file-list {
+            margin-top: 15px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .file-item {
+            background: #f6f8fa;
+            padding: 10px;
+            margin-bottom: 8px;
+            border-radius: 6px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .file-name {
+            font-size: 14px;
+            color: #24292e;
+        }
+
+        .file-size {
+            font-size: 12px;
+            color: #666;
+        }
+
+        .remove-file {
+            background: #d73a49;
+            color: white;
+            border: none;
+            padding: 4px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        .remove-file:hover {
+            background: #cb2431;
+        }
+
+        /* Repo Selection Buttons */
+        .repo-controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .repo-controls button {
+            padding: 8px 16px;
+            border: 1px solid #e1e4e8;
+            background: #f6f8fa;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .repo-controls button:hover {
+            background: #e1e4e8;
+        }
+
+        .repo-list {
+            border: 1px solid #e1e4e8;
+            border-radius: 8px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .repo-item {
+            display: flex;
+            align-items: center;
+            padding: 10px 15px;
+            border-bottom: 1px solid #e1e4e8;
+            cursor: pointer;
+        }
+
+        .repo-item:hover {
+            background: #f6f8fa;
+        }
+
+        .repo-item.selected {
+            background: #667eea20;
+            border-left: 3px solid #667eea;
+        }
+
+        .repo-item input {
+            width: auto;
+            margin-right: 12px;
+            cursor: pointer;
+        }
+
+        .repo-name {
+            flex: 1;
+            font-weight: 500;
+        }
+
+        .repo-full-name {
+            font-size: 12px;
+            color: #666;
+        }
+
+        .repo-badge {
+            font-size: 11px;
+            padding: 2px 8px;
+            border-radius: 12px;
+            background: #e1e4e8;
+        }
+
+        .selected-count {
+            margin-top: 10px;
+            font-size: 13px;
+            color: #666;
+            text-align: right;
+        }
+
+        /* Push Button */
+        .push-btn {
+            width: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 14px;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .push-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+        }
+
+        .push-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        /* Push to Multiple */
+        .push-all-btn {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            margin-top: 10px;
+        }
+
+        /* Status Message */
+        .status {
+            margin-top: 20px;
+            padding: 12px;
+            border-radius: 8px;
+            display: none;
+        }
+
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+            display: block;
+        }
+
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+            display: block;
+        }
+
+        .status.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+            display: block;
+            white-space: pre-line;
+        }
+
+        .token-info {
+            background: #fff3cd;
+            border: 1px solid #ffeeba;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+
+        .token-info code {
+            background: #fff;
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+
+        /* Loading Spinner */
+        .spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid #fff;
+            border-top-color: transparent;
+            border-radius: 50%;
+            animation: spin 0.6s linear infinite;
+            margin-right: 8px;
+            vertical-align: middle;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .repo-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .select-all-btn {
+            font-size: 12px;
+            padding: 4px 12px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📤 GitHub Multi-Repo Pusher</h1>
+            <p>Plus icon se files daalo, repos select karo, ek saath push karo!</p>
+        </div>
+
+        <div class="content">
+            <!-- Token Guide -->
+            <div class="token-info">
+                🔑 <strong>Token Kaise Banaye (All Repositories ke liye)</strong><br>
+                1. <a href="https://github.com/settings/tokens" target="_blank">GitHub Tokens Page</a> par jao<br>
+                2. "Fine-grained tokens" → "Generate new token"<br>
+                3. Repository access → <strong>All repositories</strong> select karo<br>
+                4. Permissions → Contents = <strong>Read and write</strong><br>
+                5. Token copy karo aur neeche paste karo
+            </div>
+
+            <!-- GitHub Token Input -->
+            <div class="section">
+                <label>🔐 GitHub Personal Access Token</label>
+                <input type="password" id="githubToken" placeholder="github_pat_xxxxxxxxxxxx">
+                <small>Token secret hai, kisi se share mat karna</small>
+            </div>
+
+            <!-- Fetch Repos Button -->
+            <div class="section">
+                <button id="fetchReposBtn" style="width: 100%; padding: 10px; background: #667eea; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 14px;">
+                    📂 Meri Repos Load Karo
+                </button>
+                <small>Token daalne ke baad ye click karo, saari repos dikh jayengi</small>
+            </div>
+
+            <!-- Repo Selection -->
+            <div class="section" id="repoSection" style="display: none;">
+                <div class="repo-header">
+                    <label>📁 Repositories Select Karo</label>
+                    <button id="selectAllReposBtn" class="select-all-btn">Sab Select Karo</button>
+                </div>
+                <div id="repoList" class="repo-list">
+                    <!-- Repos yahan load honge -->
+                </div>
+                <div id="selectedCount" class="selected-count"></div>
+            </div>
+
+            <!-- Branch Name -->
+            <div class="section">
+                <label>🌿 Branch Name</label>
+                <input type="text" id="branchName" value="main" placeholder="main ya master">
+                <small>Usually "main" ya "master" — apni repo ke hisaab se daalo</small>
+            </div>
+
+            <!-- Commit Message -->
+            <div class="section">
+                <label>📝 Commit Message (Optional)</label>
+                <input type="text" id="commitMsg" placeholder="Added files via Multi-Repo Pusher">
+                <small>Jo message GitHub par dikhega</small>
+            </div>
+
+            <!-- File Upload Area with Plus Icon -->
+            <div class="section">
+                <label>📁 Files Add Karo</label>
+                <div class="file-area" id="fileUploadArea">
+                    <div class="plus-icon">➕</div>
+                    <p>Click karo ya drag & drop karo</p>
+                    <p style="font-size: 12px; margin-top: 5px;">Multiple files select kar sakte ho</p>
+                </div>
+                <input type="file" id="fileInput" multiple style="display: none;">
+                
+                <!-- File List -->
+                <div id="fileList" class="file-list"></div>
+            </div>
+
+            <!-- Push Buttons -->
+            <button class="push-btn" id="pushBtn">🚀 Selected Repos Mein Push Karo</button>
+            <button class="push-btn push-all-btn" id="pushAllBtn" style="margin-top: 10px;">📦 Saari Repos Mein Push Karo</button>
+
+            <!-- Status Message -->
+            <div id="status" class="status"></div>
+        </div>
+    </div>
+
+    <script>
+        // DOM Elements
+        const fileUploadArea = document.getElementById('fileUploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const fileListDiv = document.getElementById('fileList');
+        const pushBtn = document.getElementById('pushBtn');
+        const pushAllBtn = document.getElementById('pushAllBtn');
+        const fetchReposBtn = document.getElementById('fetchReposBtn');
+        const statusDiv = document.getElementById('status');
+        const repoSection = document.getElementById('repoSection');
+        const repoListDiv = document.getElementById('repoList');
+        const selectedCountSpan = document.getElementById('selectedCount');
+        const selectAllBtn = document.getElementById('selectAllReposBtn');
+        
+        // Store selected files and repos
+        let selectedFiles = [];
+        let repos = [];
+        let selectedRepos = new Set(); // Set of repo full names (owner/repo)
+
+        // File Upload Area Click
+        fileUploadArea.addEventListener('click', () => {
+            fileInput.click();
+        });
+
+        // Drag & Drop Support
+        fileUploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            fileUploadArea.style.borderColor = '#667eea';
+            fileUploadArea.style.background = '#f5f3ff';
+        });
+
+        fileUploadArea.addEventListener('dragleave', () => {
+            fileUploadArea.style.borderColor = '#e1e4e8';
+            fileUploadArea.style.background = '#fafbfc';
+        });
+
+        fileUploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            fileUploadArea.style.borderColor = '#e1e4e8';
+            fileUploadArea.style.background = '#fafbfc';
+            
+            const files = Array.from(e.dataTransfer.files);
+            addFiles(files);
+        });
+
+        // File input change handler
+        fileInput.addEventListener('change', (e) => {
+            const files = Array.from(e.target.files);
+            addFiles(files);
+            fileInput.value = '';
+        });
+
+        // Add files to the list
+        function addFiles(newFiles) {
+            for (const file of newFiles) {
+                if (!selectedFiles.some(f => f.name === file.name && f.size === file.size)) {
+                    selectedFiles.push(file);
+                }
+            }
+            renderFileList();
+        }
+
+        // Remove file from list
+        function removeFile(index) {
+            selectedFiles.splice(index, 1);
+            renderFileList();
+        }
+
+        // Render file list
+        function renderFileList() {
+            if (selectedFiles.length === 0) {
+                fileListDiv.innerHTML = '<p style="text-align: center; color: #666; padding: 20px;">Koi file add nahi ki gayi</p>';
+                return;
+            }
+
+            fileListDiv.innerHTML = '';
+            selectedFiles.forEach((file, index) => {
+                const fileItem = document.createElement('div');
+                fileItem.className = 'file-item';
+                
+                const fileInfo = document.createElement('div');
+                fileInfo.innerHTML = `
+                    <div class="file-name">📄 ${escapeHtml(file.name)}</div>
+                    <div class="file-size">${(file.size / 1024).toFixed(2)} KB</div>
+                `;
+                
+                const removeBtn = document.createElement('button');
+                removeBtn.className = 'remove-file';
+                removeBtn.textContent = 'Remove';
+                removeBtn.onclick = () => removeFile(index);
+                
+                fileItem.appendChild(fileInfo);
+                fileItem.appendChild(removeBtn);
+                fileListDiv.appendChild(fileItem);
+            });
+        }
+
+        // Show status message
+        function showStatus(message, type) {
+            statusDiv.textContent = message;
+            statusDiv.className = `status ${type}`;
+            
+            if (type === 'success') {
+                setTimeout(() => {
+                    statusDiv.className = 'status';
+                }, 8000);
+            }
+        }
+
+        // Escape HTML
+        function escapeHtml(str) {
+            return str.replace(/[&<>]/g, function(m) {
+                if (m === '&') return '&amp;';
+                if (m === '<') return '&lt;';
+                if (m === '>') return '&gt;';
+                return m;
+            });
+        }
+
+        // Fetch user's repositories
+        async function fetchRepos() {
+            const token = document.getElementById('githubToken').value.trim();
+            
+            if (!token) {
+                showStatus('❌ Pehle GitHub Token daalo!', 'error');
+                return;
+            }
+
+            showStatus('📂 Repos load ho rahi hai...', 'info');
+            
+            try {
+                // Fetch all repos (paginated)
+                let allRepos = [];
+                let page = 1;
+                let hasMore = true;
+                
+                while (hasMore) {
+                    const response = await fetch(`https://api.github.com/user/repos?per_page=100&page=${page}&sort=updated`, {
+                        headers: {
+                            'Authorization': `Bearer ${token}`,
+                            'Accept': 'application/vnd.github.v3+json'
+                        }
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error('Failed to fetch repos');
+                    }
+                    
+                    const reposPage = await response.json();
+                    if (reposPage.length === 0) {
+                        hasMore = false;
+                    } else {
+                        allRepos = allRepos.concat(reposPage);
+                        page++;
+                    }
+                }
+                
+                repos = allRepos.map(repo => ({
+                    name: repo.name,
+                    full_name: repo.full_name,
+                    owner: repo.owner.login,
+                    repo_name: repo.name,
+                    default_branch: repo.default_branch,
+                    private: repo.private
+                }));
+                
+                renderRepoList();
+                repoSection.style.display = 'block';
+                showStatus(`✅ ${repos.length} repos mil gayi! Ab select karo`, 'success');
+                
+            } catch (error) {
+                console.error(error);
+                showStatus(`❌ Repos load nahi hui: ${error.message}. Check token permissions!`, 'error');
+            }
+        }
+
+        // Render repo list with checkboxes
+        function renderRepoList() {
+            if (repos.length === 0) {
+                repoListDiv.innerHTML = '<p style="padding: 20px; text-align: center; color: #666;">Koi repo nahi mili</p>';
+                return;
+            }
+            
+            repoListDiv.innerHTML = '';
+            repos.forEach(repo => {
+                const repoItem = document.createElement('div');
+                repoItem.className = `repo-item ${selectedRepos.has(repo.full_name) ? 'selected' : ''}`;
+                repoItem.onclick = (e) => {
+                    // Don't toggle if clicking on checkbox specifically
+                    if (e.target.type !== 'checkbox') {
+                        toggleRepo(repo.full_name);
+                    }
+                };
+                
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.checked = selectedRepos.has(repo.full_name);
+                checkbox.onclick = (e) => {
+                    e.stopPropagation();
+                    toggleRepo(repo.full_name);
+                };
+                
+                const repoInfo = document.createElement('div');
+                repoInfo.style.flex = '1';
+                repoInfo.innerHTML = `
+                    <div class="repo-name">📁 ${escapeHtml(repo.name)}</div>
+                    <div class="repo-full-name">${escapeHtml(repo.full_name)}</div>
+                `;
+                
+                const badge = document.createElement('span');
+                badge.className = 'repo-badge';
+                badge.textContent = repo.private ? '🔒 Private' : '🌍 Public';
+                
+                repoItem.appendChild(checkbox);
+                repoItem.appendChild(repoInfo);
+                repoItem.appendChild(badge);
+                repoListDiv.appendChild(repoItem);
+            });
+            
+            updateSelectedCount();
+        }
+
+        // Toggle repo selection
+        function toggleRepo(repoFullName) {
+            if (selectedRepos.has(repoFullName)) {
+                selectedRepos.delete(repoFullName);
+            } else {
+                selectedRepos.add(repoFullName);
+            }
+            renderRepoList(); // Re-render to update styles
+        }
+
+        // Select all repos
+        function selectAllRepos() {
+            repos.forEach(repo => {
+                selectedRepos.add(repo.full_name);
+            });
+            renderRepoList();
+        }
+
+        // Update selected count display
+        function updateSelectedCount() {
+            const count = selectedRepos.size;
+            selectedCountSpan.textContent = `${count} repo${count !== 1 ? 's' : ''} select ki gayi`;
+        }
+
+        // Convert file to base64
+        function fileToBase64(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = () => resolve(reader.result.split(',')[1]);
+                reader.onerror = error => reject(error);
+            });
+        }
+
+        // Push files to a single repository
+        async function pushToRepo(repoFullName, token, branch, commitMessage, files) {
+            const [owner, repo] = repoFullName.split('/');
+            let successCount = 0;
+            let failCount = 0;
+            const results = [];
+            
+            for (const file of files) {
+                try {
+                    const base64Content = await fileToBase64(file);
+                    const apiUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${file.name}`;
+                    
+                    const response = await fetch(apiUrl, {
+                        method: 'PUT',
+                        headers: {
+                            'Authorization': `Bearer ${token}`,
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/vnd.github.v3+json'
+                        },
+                        body: JSON.stringify({
+                            message: commitMessage || `Add/Update ${file.name}`,
+                            content: base64Content,
+                            branch: branch
+                        })
+                    });
+                    
+                    if (!response.ok) {
+                        const errorData = await response.json();
+                        throw new Error(errorData.message || 'Push failed');
+                    }
+                    
+                    successCount++;
+                    results.push({ file: file.name, status: 'success' });
+                    
+                } catch (error) {
+                    failCount++;
+                    results.push({ file: file.name, status: 'failed', error: error.message });
+                    console.error(`Error pushing ${file.name} to ${repoFullName}:`, error);
+                }
+            }
+            
+            return { repo: repoFullName, successCount, failCount, results };
+        }
+
+        // Main push function for selected repos
+        async function pushToSelectedRepos(pushToAll = false) {
+            const token = document.getElementById('githubToken').value.trim();
+            const branch = document.getElementById('branchName').value.trim() || 'main';
+            const commitMsg = document.getElementById('commitMsg').value.trim() || 'Added files via Multi-Repo Pusher';
+            
+            // Validation
+            if (!token) {
+                showStatus('❌ GitHub Token daalo!', 'error');
+                return;
+            }
+            
+            if (selectedFiles.length === 0) {
+                showStatus('❌ Koi file add karo! Plus icon dabao', 'error');
+                return;
+            }
+            
+            let reposToPush = [];
+            if (pushToAll) {
+                reposToPush = repos.map(r => r.full_name);
+                if (reposToPush.length === 0) {
+                    showStatus('❌ Pehle "Meri Repos Load Karo" click karo!', 'error');
+                    return;
+                }
+            } else {
+                reposToPush = Array.from(selectedRepos);
+                if (reposToPush.length === 0) {
+                    showStatus('❌ Koi repo select karo! Checkboxes tick karo', 'error');
+                    return;
+                }
+            }
+            
+            // Disable buttons
+            pushBtn.disabled = true;
+            pushAllBtn.disabled = true;
+            
+            showStatus(`🚀 ${reposToPush.length} repo(s) mein push ho raha hai... Yeh thoda time le sakta hai`, 'info');
+            
+            const allResults = [];
+            let totalSuccess = 0;
+            let totalFail = 0;
+            
+            for (let i = 0; i < reposToPush.length; i++) {
+                const repoFullName = reposToPush[i];
+                showStatus(`📤 (${i+1}/${reposToPush.length}) ${repoFullName} mein push ho raha hai...`, 'info');
+                
+                const result = await pushToRepo(repoFullName, token, branch, commitMsg, selectedFiles);
+                allResults.push(result);
+                totalSuccess += result.successCount;
+                totalFail += result.failCount;
+                
+                // Small delay between repos to avoid rate limiting
+                await new Promise(resolve => setTimeout(resolve, 1000));
+            }
+            
+            // Build final status message
+            let statusMsg = `✅ Ho gaya!\n`;
+            statusMsg += `📁 ${selectedFiles.length} file(s) | 📦 ${reposToPush.length} repo(s)\n`;
+            statusMsg += `✅ Total success: ${totalSuccess} file pushes\n`;
+            if (totalFail > 0) statusMsg += `❌ Total failed: ${totalFail} file pushes\n\n`;
+            statusMsg += `📊 Repo-wise summary:\n`;
+            allResults.forEach(r => {
+                statusMsg += `  • ${r.repo}: ${r.successCount}/${selectedFiles.length} files pushed\n`;
+            });
+            
+            showStatus(statusMsg, totalFail === 0 ? 'success' : 'error');
+            
+            // Re-enable buttons
+            pushBtn.disabled = false;
+            pushAllBtn.disabled = false;
+            
+            // Optional: Clear selection after successful push
+            if (totalFail === 0 && !pushToAll) {
+                // Don't clear automatically, user can decide
+            }
+        }
+
+        // Event Listeners
+        fetchReposBtn.addEventListener('click', fetchRepos);
+        selectAllBtn.addEventListener('click', selectAllRepos);
+        pushBtn.addEventListener('click', () => pushToSelectedRepos(false));
+        pushAllBtn.addEventListener('click', () => pushToSelectedRepos(true));
+        
+        // Initial render
+        renderFileList();
+    </script>
+</body>
+</html>
